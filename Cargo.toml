@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = [
+  "wisteria", 
+  "wisteria_services",
+  "wisteria_ui"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+wisteria_ui = { path = "wisteria_ui" }
+#gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = ["wayland"] }
+#gpui_linux = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false, features = ["wayland"] }
+gpui = { path = "/home/jacob/Projects/zed/crates/gpui", features = ["wayland"]}
+gpui_linux = { path = "/home/jacob/Projects/zed/crates/gpui_linux", default-features = false, features = ["wayland"]}
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

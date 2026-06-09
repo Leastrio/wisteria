@@ -1,0 +1,13 @@
+[package]
+name = "wisteria"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+wisteria_ui.workspace = true
+gpui.workspace = true
+gpui_linux.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap = { version = "4.6.1", features = ["derive"] }
+reqwest_client = { path = "/home/jacob/Projects/zed/crates/reqwest_client" }

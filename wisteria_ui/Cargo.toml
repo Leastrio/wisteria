@@ -1,0 +1,13 @@
+[package]
+name = "wisteria_ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui.workspace = true
+gpui_linux.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono = "0.4.44"
+rust-embed = "8.11.0"
+anyhow = "1.0.102"
