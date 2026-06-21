@@ -11,7 +11,6 @@ struct Bar {
   music: Entity<MusicWidget>,
   workspaces: Entity<WorkspacesWidget>,
   notification: Entity<NotificationWidget>,
-  volume: Entity<VolumeWidget>,
   clock: Entity<ClockWidget>,
   menu: Entity<MenuWidget>
 }
@@ -22,10 +21,9 @@ impl Bar {
         launcher: cx.new(|_cx| LauncherWidget),
         sys_stats: cx.new(|_cx| SysStatsWidget),
         clock: cx.new(ClockWidget::new),
-        music: cx.new(|_cx| MusicWidget),
+        music: cx.new(MusicWidget::new),
         workspaces: cx.new(|_cx| WorkspacesWidget),
         notification: cx.new(|_cx| NotificationWidget),
-        volume: cx.new(|_cx| VolumeWidget),
         menu: cx.new(|_cx| MenuWidget),
     }
   }
@@ -69,7 +67,6 @@ impl Render for Bar {
           ]))
           .child(section(Align::End, [
               self.notification.clone().into_any_element(),
-              self.volume.clone().into_any_element(),
               self.clock.clone().into_any_element(),
               self.menu.clone().into_any_element()
           ]))

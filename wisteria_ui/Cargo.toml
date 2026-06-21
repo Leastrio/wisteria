@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+wisteria_services.workspace = true
 gpui.workspace = true
 gpui_linux.workspace = true
 tracing.workspace = true
@@ -11,3 +12,5 @@ tracing-subscriber.workspace = true
 chrono = "0.4.44"
 rust-embed = "8.11.0"
 anyhow = "1.0.102"
+futures-signals.workspace = true
+futures-util.workspace = true

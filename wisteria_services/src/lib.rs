@@ -1,14 +1,32 @@
-pub fn add(left: u64, right: u64) -> u64 {
-  left + right
+pub mod music;
+
+use std::sync::Arc;
+
+use gpui::{App, Global};
+
+use crate::music::MprisService;
+
+#[derive(Default)]
+pub struct ServiceRegistry {
+  pub mpris: Option<Arc<MprisService>>
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
+impl Global for ServiceRegistry {}
 
-  #[test]
-  fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
+impl ServiceRegistry {
+  pub fn mpris(&mut self, cx: &mut App) -> Arc<MprisService> {
+    if let Some(service) = &self.mpris {
+      return service.clone();
+    }
+
+    let service = MprisService::new();
+    let task = service.clone();
+    cx.spawn(async move |_| {
+      task.run().await;
+    }).detach();
+
+    self.mpris = Some(service.clone());
+    
+    service
   }
 }

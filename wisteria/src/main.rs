@@ -8,6 +8,7 @@ use reqwest_client::ReqwestClient;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use clap::{Parser, Subcommand};
+use wisteria_services::ServiceRegistry;
 
 /// Wisteria Wayland shell
 #[derive(Parser, Debug)]
@@ -55,10 +56,11 @@ fn main() {
   }
 }
 
-fn start_shell(config: Option<PathBuf>) {
+fn start_shell(_config: Option<PathBuf>) {
   Application::with_platform(gpui_linux::current_platform(false))
     .with_assets(wisteria_ui::assets::Assets)
     .run(|cx: &mut App| {
+      cx.set_global::<ServiceRegistry>(ServiceRegistry::default());
       let http_client = ReqwestClient::user_agent("wisteria").unwrap();
       cx.set_http_client(Arc::new(http_client));
 

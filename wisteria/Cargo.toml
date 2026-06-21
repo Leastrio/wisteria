@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 wisteria_ui.workspace = true
+wisteria_services.workspace = true
 gpui.workspace = true
 gpui_linux.workspace = true
 tracing.workspace = true

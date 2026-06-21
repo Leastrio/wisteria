@@ -17,3 +17,24 @@ impl Render for WorkspacesWidget {
       .child(workspace_button(false, 5))
   }
 }
+
+pub fn workspace_button(active: bool, num: usize) -> Div {
+    div()
+        .size_6()
+        .rounded_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .font_weight(FontWeight::SEMIBOLD)
+        .bg(if active {
+            rgb(0xcba6f7)
+        } else {
+            rgb(0x45475a)
+        })
+        .text_color(if active {
+            rgb(0x1e1e2e)
+        } else {
+            rgb(0xcdd6f4)
+        })
+        .child(num.to_string())
+}
