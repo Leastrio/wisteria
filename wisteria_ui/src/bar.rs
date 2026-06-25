@@ -8,7 +8,7 @@ use crate::widgets::*;
 struct Bar {
   launcher: Entity<LauncherWidget>,
   sys_stats: Entity<SysStatsWidget>,
-  music: Entity<MusicWidget>,
+  mpris: Entity<MprisWidget>,
   workspaces: Entity<WorkspacesWidget>,
   notification: Entity<NotificationWidget>,
   clock: Entity<ClockWidget>,
@@ -19,9 +19,9 @@ impl Bar {
   fn new(cx: &mut Context<Self>) -> Self {
     Self {
         launcher: cx.new(|_cx| LauncherWidget),
-        sys_stats: cx.new(|_cx| SysStatsWidget),
+        sys_stats: cx.new(SysStatsWidget::new),
         clock: cx.new(ClockWidget::new),
-        music: cx.new(MusicWidget::new),
+        mpris: cx.new(MprisWidget::new),
         workspaces: cx.new(|_cx| WorkspacesWidget),
         notification: cx.new(|_cx| NotificationWidget),
         menu: cx.new(|_cx| MenuWidget),
@@ -60,7 +60,7 @@ impl Render for Bar {
           .child(section(Align::Start, [
             self.launcher.clone().into_any_element(),
             self.sys_stats.clone().into_any_element(),
-            self.music.clone().into_any_element(),
+            self.mpris.clone().into_any_element(),
           ]))
           .child(section(Align::Center, [
             self.workspaces.clone().into_any_element()

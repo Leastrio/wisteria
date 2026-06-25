@@ -1,7 +1,7 @@
 pub mod clock;
 pub mod launcher;
 pub mod menu;
-pub mod music;
+pub mod mpris;
 pub mod notification;
 pub mod system_stats;
 pub mod workspaces;
@@ -9,7 +9,7 @@ pub mod workspaces;
 use gpui::{Div, FontWeight, Styled, div, prelude::*, rgb, svg};
 pub use launcher::LauncherWidget;
 pub use system_stats::SysStatsWidget;
-pub use music::MusicWidget;
+pub use mpris::MprisWidget;
 pub use workspaces::WorkspacesWidget;
 pub use notification::NotificationWidget;
 pub use clock::ClockWidget;

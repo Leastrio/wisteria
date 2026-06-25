@@ -4,8 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+tracing.workspace = true
 futures-signals.workspace = true
 futures-util.workspace = true
 gpui.workspace = true
 zbus = "5.16.0"
 zvariant = "5.12.0"
+sysinfo = "0.39.5"

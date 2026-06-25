@@ -3,19 +3,19 @@ use std::sync::Arc;
 use futures_signals::signal::SignalExt;
 use futures_util::StreamExt;
 use gpui::{Context, IntoElement, Render, Window, img};
-use wisteria_services::{ServiceRegistry, music::{MprisService, TrackInfo}};
+use wisteria_services::{ServiceRegistry, mpris::{MprisService, TrackInfo}};
 
 use crate::widgets::*;
 
-pub struct MusicWidget {
+pub struct MprisWidget {
   track: TrackInfo,
   service: Arc<MprisService>
 }
 
-impl MusicWidget {
+impl MprisWidget {
   pub fn new(cx: &mut Context<Self>) -> Self {
     let service = cx.update_global::<ServiceRegistry, _>(|registry, cx| {
-      registry.mpris(cx)
+      registry.service::<MprisService>(cx)
     });
 
     let mut track_stream = service.subscribe().to_stream();
@@ -37,7 +37,7 @@ impl MusicWidget {
 }
 
 // Fix the gray uncached album art loading
-impl Render for MusicWidget {
+impl Render for MprisWidget {
   fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
     let service = self.service.clone();
 
