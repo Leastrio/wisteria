@@ -7478,9 +7478,12 @@ dependencies = [
 name = "wisteria_services"
 version = "0.1.0"
 dependencies = [
+ "async-io",
+ "futures-lite 2.6.1",
  "futures-signals",
  "futures-util",
  "gpui",
+ "serde_json",
  "sysinfo 0.39.5",
  "tracing",
  "zbus",

@@ -2,18 +2,20 @@ pub mod clock;
 pub mod launcher;
 pub mod menu;
 pub mod mpris;
-pub mod notification;
+pub mod peripheral;
 pub mod system_stats;
+pub mod vpn;
 pub mod workspaces;
 
+pub use clock::ClockWidget;
 use gpui::{Div, FontWeight, Styled, div, prelude::*, rgb, svg};
 pub use launcher::LauncherWidget;
-pub use system_stats::SysStatsWidget;
-pub use mpris::MprisWidget;
-pub use workspaces::WorkspacesWidget;
-pub use notification::NotificationWidget;
-pub use clock::ClockWidget;
 pub use menu::MenuWidget;
+pub use mpris::MprisWidget;
+pub use peripheral::PeripheralWidget;
+pub use system_stats::SysStatsWidget;
+pub use vpn::VpnWidget;
+pub use workspaces::WorkspacesWidget;
 
 pub fn pill() -> Div {
   div()
@@ -37,10 +39,5 @@ pub fn icon_button(path: &'static str) -> Div {
     .items_center()
     .justify_center()
     .bg(rgb(0x313244))
-    .child(
-      svg()
-        .path(path)
-        .size_4()
-        .text_color(rgb(0xcdd6f4))
-    )
+    .child(svg().path(path).size_4().text_color(rgb(0xcdd6f4)))
 }

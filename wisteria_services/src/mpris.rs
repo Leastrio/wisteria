@@ -1,13 +1,16 @@
-use std::{collections::HashMap, sync::{Arc, OnceLock}};
+use std::{
+  collections::HashMap,
+  sync::{Arc, OnceLock},
+};
 
 use futures_signals::signal::{Mutable, MutableSignalCloned};
 use futures_util::StreamExt;
+use gpui::App;
 use tracing::{error, warn};
 use zbus::{Connection, Proxy};
 use zvariant::OwnedValue;
-use gpui::App;
 
-use crate::Service;
+use crate::{Service, ServiceRegistry};
 
 const SPOTIFY: &str = "org.mpris.MediaPlayer2.spotify";
 
@@ -15,50 +18,47 @@ const SPOTIFY: &str = "org.mpris.MediaPlayer2.spotify";
 pub struct TrackInfo {
   pub title: String,
   pub artist: String,
-  pub art_url: String
+  pub art_url: String,
 }
 
 pub struct MprisService {
+  conn: OnceLock<Connection>,
   track: Mutable<TrackInfo>,
-  conn: OnceLock<Connection>
 }
 
 impl Service for MprisService {
   fn new() -> Arc<Self> {
     Arc::new(Self {
       track: Mutable::new(TrackInfo::default()),
-      conn: OnceLock::new()
+      conn: OnceLock::new(),
     })
   }
 
   fn start(self: Arc<Self>, cx: &mut App) {
-    cx.spawn(async move |_| {
+    let this = self.clone();
+
+    cx.spawn(async move |cx| {
+      let conn = cx.update_global::<ServiceRegistry, _>(|registry, _| registry.session());
+
+      let _ = this.conn.set(conn);
+
       self.run().await;
-    }).detach();
+    })
+    .detach();
   }
 }
 
 impl MprisService {
-  async fn conn(&self) -> &Connection {
-    if let Some(conn) = self.conn.get() {
-      return conn;
-    }
-
-    let conn = Connection::session().await.unwrap();
-    let _ = self.conn.set(conn);
-    self.conn.get().unwrap()
-  }
-
   pub fn subscribe(&self) -> MutableSignalCloned<TrackInfo> {
     self.track.signal_cloned()
   }
 
   pub async fn play_pause(&self) {
     let _ = Proxy::new(
-      self.conn().await,
+      self.conn.get().unwrap(),
       "org.mpris.MediaPlayer2.spotify",
       "/org/mpris/MediaPlayer2",
-      "org.mpris.MediaPlayer2.Player"
+      "org.mpris.MediaPlayer2.Player",
     )
     .await
     .unwrap()
@@ -83,47 +83,87 @@ impl MprisService {
 
   pub async fn watch_player(&self) -> zbus::Result<()> {
     let proxy = Proxy::new(
-      self.conn().await,
+      self.conn.get().unwrap(),
       SPOTIFY,
       "/org/mpris/MediaPlayer2",
-      "org.freedesktop.DBus.Properties"
-    ).await?;
+      "org.freedesktop.DBus.Properties",
+    )
+    .await?;
+
+    let dbus = Proxy::new(
+      self.conn.get().unwrap(),
+      "org.freedesktop.DBus",
+      "/org/freedesktop/DBus",
+      "org.freedesktop.DBus",
+    )
+    .await?;
 
     self.track.set(self.get_initial_value().await);
 
     let mut changes = proxy.receive_signal("PropertiesChanged").await?;
+    let mut owners = dbus.receive_signal("NameOwnerChanged").await?;
 
-    while let Some(signal) = changes.next().await {
-      let (_iface, changed, _invalidated): (String, HashMap<String, OwnedValue>, Vec<String>) = signal.body().deserialize()?;
+    loop {
+      futures_util::select! {
+        msg = changes.next() => {
+          let Some(signal) = msg else {
+            self.track.set(TrackInfo::default());
+            return Ok(());
+          };
 
-      if let Some(values) = changed.get("Metadata") {
-        let v_map: HashMap<String, OwnedValue> = values.clone().try_into()?;
-        let info = Self::parse_resp(v_map);
-        self.track.set(info);
+          let (_iface, changed, _invalided): (String, HashMap<String, OwnedValue>, Vec<String>) = signal.body().deserialize()?;
+
+          if let Some(values) = changed.get("Metadata") {
+            let map: HashMap<String, OwnedValue> = values.clone().try_into()?;
+            self.track.set(Self::parse_resp(map));
+          }
+        }
+
+        msg = owners.next() => {
+          let Some(signal) = msg else {
+            continue;
+          };
+
+          let (name, _old, new): (String, String, String) = signal.body().deserialize()?;
+          if name == SPOTIFY && new.is_empty() {
+            self.track.set(TrackInfo::default());
+            return Ok(());
+          }
+        }
       }
     }
-
-    Ok(())
   }
 
   async fn wait_for_player(&self) -> zbus::Result<()> {
     let dbus = Proxy::new(
-      self.conn().await,
+      self.conn.get().unwrap(),
       "org.freedesktop.DBus",
       "/org/freedesktop/DBus",
-      "org.freedesktop.DBus"
-    ).await?;
+      "org.freedesktop.DBus",
+    )
+    .await?;
 
-    if dbus.call_method("NameHasOwner", &(SPOTIFY)).await?.body().deserialize::<bool>()? {
+    if dbus
+      .call_method("NameHasOwner", &(SPOTIFY))
+      .await?
+      .body()
+      .deserialize::<bool>()?
+    {
       return Ok(());
     }
+
+    self.track.set(TrackInfo::default());
 
     let mut stream = dbus.receive_signal("NameOwnerChanged").await?;
     while let Some(msg) = stream.next().await {
       let (name, _old, new): (String, String, String) = msg.body().deserialize()?;
 
-      if name == SPOTIFY && !new.is_empty() {
-        return Ok(());
+      if name == SPOTIFY {
+        if new.is_empty() {
+          self.track.set(TrackInfo::default());
+        } else {
+          return Ok(());
+        }
       }
     }
 
@@ -132,11 +172,13 @@ impl MprisService {
 
   async fn get_initial_value(&self) -> TrackInfo {
     let proxy = Proxy::new(
-      self.conn().await,
+      self.conn.get().unwrap(),
       "org.mpris.MediaPlayer2.spotify",
       "/org/mpris/MediaPlayer2",
-      "org.mpris.MediaPlayer2.Player"
-    ).await.unwrap();
+      "org.mpris.MediaPlayer2.Player",
+    )
+    .await
+    .unwrap();
 
     let resp: HashMap<String, OwnedValue> = proxy.get_property("Metadata").await.unwrap();
     return Self::parse_resp(resp);
@@ -156,7 +198,7 @@ impl MprisService {
       art_url: resp
         .get("mpris:artUrl")
         .and_then(|v| String::try_from(v.clone()).ok())
-        .unwrap_or_default()
+        .unwrap_or_default(),
     }
   }
 }

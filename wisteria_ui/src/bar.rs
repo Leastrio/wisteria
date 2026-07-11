@@ -1,81 +1,108 @@
 use gpui::{
-    App, Bounds, Context, DisplayId, Div, Entity, Pixels, Size, Window, WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div, layer_shell::*, linear_color_stop, linear_gradient, point, prelude::*, px, rgb, rgba
+  AnyView, App, Bounds, Context, DisplayId, Pixels, Size, Window, WindowBackgroundAppearance,
+  WindowBounds, WindowKind, WindowOptions, div, layer_shell::*, linear_color_stop, linear_gradient,
+  point, prelude::*, px, rgb, rgba,
 };
 
-use tracing::info;
 use crate::widgets::*;
+use tracing::info;
 
 struct Bar {
-  launcher: Entity<LauncherWidget>,
-  sys_stats: Entity<SysStatsWidget>,
-  mpris: Entity<MprisWidget>,
-  workspaces: Entity<WorkspacesWidget>,
-  notification: Entity<NotificationWidget>,
-  clock: Entity<ClockWidget>,
-  menu: Entity<MenuWidget>
+  start_widgets: Vec<AnyView>,
+  center_widgets: Vec<AnyView>,
+  end_widgets: Vec<AnyView>,
 }
 
 impl Bar {
-  fn new(cx: &mut Context<Self>) -> Self {
+  fn new(cx: &mut Context<Self>, display_name: String) -> Self {
     Self {
-        launcher: cx.new(|_cx| LauncherWidget),
-        sys_stats: cx.new(SysStatsWidget::new),
-        clock: cx.new(ClockWidget::new),
-        mpris: cx.new(MprisWidget::new),
-        workspaces: cx.new(|_cx| WorkspacesWidget),
-        notification: cx.new(|_cx| NotificationWidget),
-        menu: cx.new(|_cx| MenuWidget),
+      start_widgets: vec![
+        cx.new(|_cx| LauncherWidget).into(),
+        cx.new(SysStatsWidget::new).into(),
+        cx.new(MprisWidget::new).into(),
+      ],
+      center_widgets: vec![cx.new(|cx| WorkspacesWidget::new(cx, display_name)).into()],
+      end_widgets: vec![
+        cx.new(VpnWidget::new).into(),
+        cx.new(PeripheralWidget::new).into(),
+        cx.new(ClockWidget::new).into(),
+        cx.new(|_cx| MenuWidget).into(),
+      ],
     }
   }
 }
 
 impl Render for Bar {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-      let root = div().flex().flex_col().size_full();
-      let bar = div()
-        .h(px(40.0))
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_sm()
-        .font_family("JetBrainsMono Nerd Font")
-        .text_color(rgb(0xcdd6f4))
-        .bg(rgba(0x1e1e2ef2));
+  fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    let root = div().flex().flex_col().size_full();
+    let bar = div()
+      .h(px(40.0))
+      .flex()
+      .items_center()
+      .justify_center()
+      .text_sm()
+      .font_family("JetBrainsMono Nerd Font")
+      .text_color(rgb(0xcdd6f4))
+      .bg(rgba(0x1e1e2ef2));
 
-      let shadow = div()
-        .h(px(5.0))
-        .bg(
-          linear_gradient(
-            180.0,
-            linear_color_stop(rgba(0x0000007F), 0.0),
-            linear_color_stop(rgba(0x00000000), 1.0)
+    let shadow = div().h(px(5.0)).bg(linear_gradient(
+      180.0,
+      linear_color_stop(rgba(0x0000007F), 0.0),
+      linear_color_stop(rgba(0x00000000), 1.0),
+    ));
+
+    root
+      .child(
+        bar
+          .child(
+            div()
+              .absolute()
+              .left_0()
+              .top_0()
+              .bottom_0()
+              .px_1p5()
+              .py_1()
+              .flex()
+              .items_center()
+              .gap_1p5()
+              .px_1p5()
+              .children(self.start_widgets.clone()),
           )
-        );
-        
-      root
-        .child(
-          bar
-          .px_1p5()
-          .py_1()
-          .child(section(Align::Start, [
-            self.launcher.clone().into_any_element(),
-            self.sys_stats.clone().into_any_element(),
-            self.mpris.clone().into_any_element(),
-          ]))
-          .child(section(Align::Center, [
-            self.workspaces.clone().into_any_element()
-          ]))
-          .child(section(Align::End, [
-              self.notification.clone().into_any_element(),
-              self.clock.clone().into_any_element(),
-              self.menu.clone().into_any_element()
-          ]))
-        )
-        .child(shadow)
-    }
+          .child(
+            div()
+              .absolute()
+              .left_0()
+              .right_0()
+              .top_0()
+              .bottom_0()
+              .px_1p5()
+              .py_1()
+              .flex()
+              .justify_center()
+              .items_center()
+              .gap_1p5()
+              .children(self.center_widgets.clone()),
+          )
+          .child(
+            div()
+              .absolute()
+              .right_0()
+              .top_0()
+              .bottom_0()
+              .px_1p5()
+              .py_1()
+              .flex()
+              .items_center()
+              .gap_1p5()
+              .px_1p5()
+              .children(self.end_widgets.clone()),
+          ),
+      )
+      .child(shadow)
+  }
 }
 
-pub fn open_bar(display_id: DisplayId, width: Pixels, cx: &mut App) {
+pub fn open_bar(display_id: DisplayId, width: Pixels, display_name: Option<String>, cx: &mut App) {
   cx.open_window(
     WindowOptions {
       titlebar: None,
@@ -97,23 +124,8 @@ pub fn open_bar(display_id: DisplayId, width: Pixels, cx: &mut App) {
       }),
       ..Default::default()
     },
-    |_, cx| cx.new(Bar::new),
+    |_, cx| cx.new(|cx| Bar::new(cx, display_name.unwrap())),
   )
   .unwrap();
   info!("Opened bar for display: {:?}", display_id);
-}
-
-enum Align {
-  Start,
-  Center,
-  End
-}
-
-fn section(align: Align, children: impl IntoIterator<Item = impl IntoElement>) -> Div {
-  let root = div().flex().size_full().items_center().gap_1p5().flex_1();
-  match align {
-    Align::Start => root.justify_start().children(children),
-    Align::Center => root.justify_center().children(children),
-    Align::End => root.justify_end().children(children),
-  }
 }
